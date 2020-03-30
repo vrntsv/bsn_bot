@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def bar_chart(data, date, legend, pict_name, other_names = ['' for i in range(3)]):
     # data - матрица, тип ndarray, число строк = длина legend, число столбцов = длина date
     # date - список со строками
@@ -31,6 +32,7 @@ def bar_chart(data, date, legend, pict_name, other_names = ['' for i in range(3)
     ax.set_xticklabels(date)
     ax.legend()
     plt.savefig(pict_name + '.png', bbox_inchåes='tight', dpi=80)
+
 
 def line_chart(data, date, legend, pict_name, other_names = ['' for i in range(3)]):
     fig, ax = plt.subplots(figsize=(18.5, 10.5))
