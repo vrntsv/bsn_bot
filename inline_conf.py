@@ -18,6 +18,7 @@ add_template_answer_time = '_answer_time_add_template'
 add_template_conf = '_conf_add_template'
 add_template_cancel = 'add_template_cancel'
 
+graph_liniar = 'graph_liniar_'
 
 template_change_time = 'template_change_time_'
 template_change_day = 'template_change_day_'

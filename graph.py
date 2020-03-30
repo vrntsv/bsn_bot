@@ -59,7 +59,7 @@ def line_chart(data, date, legend, pict_name, other_names = ['' for i in range(3
 #                  [7, 80, 9]])
 
 data = np.random.randint(500, size=(3, 30))
-
+print(data)
 legend = ['Alex', 'Boris', 'Gena']
 # date = ['10.03.2020', '12.04.2020', '15.05.2021']
 date = [f'{i}' for i in range(30)]

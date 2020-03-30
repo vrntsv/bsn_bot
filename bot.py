@@ -483,6 +483,14 @@ def tempalate_texts_get(call):
         bot.send_message(call.from_user.id, 'У вас нет шаблонов', reply_markup=conf_mark.add_text_markup(id_project))
 
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_liniar))
+def graph_liniar_menu(call):
+    data = call.data[inline_conf.graph_liniar:].split('.')
+    if data[1] == 'today':
+        pass
+    bot.delete_message(call.from_user.id, call.message.message_id)
+    bot.send_message(call.from_user.id, 'Выберите тип графика', reply_markup=conf_mark.graph_markup(inline_conf.graph_liniar, ))
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_text_add))
 def templates_text_add(call):
     create_new_template_dict(call.from_user.id)

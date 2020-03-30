@@ -154,9 +154,9 @@ def project_card(id_project, id_admin):
     project_settings = types.InlineKeyboardButton('⚙️ Настройка проекта',
                                                    callback_data=inline_conf.template_menu + str(id_project))
     statistics = types.InlineKeyboardButton('📈 Графики 1 ',
-                                            callback_data=inline_conf.project_ + str(id_project) + '_graphics_proj_')
+                                            callback_data=inline_conf.graph_liniar + str(id_project))
     statistics_two = types.InlineKeyboardButton('📊 Графики 2 ',
-                                            callback_data=inline_conf.project_ + str(id_project) + '_graphics_proj_')
+                                            callback_data=inline_conf.project_ + str(id_project))
     empl_fine = types.InlineKeyboardButton('🔏 Штрафы',
                                            callback_data=inline_conf.project_ + str(id_project) + '_fine_proj_')
 
@@ -173,6 +173,20 @@ def project_card(id_project, id_admin):
                                           callback_data=inline_conf.project_ + 'back')
     inline_kb_full.add(back_btn)
 
+    return inline_kb_full
+
+
+def graph_markup(type, id_project):
+    inline_kb_full = types.InlineKeyboardMarkup(row_width=2)
+    today = types.InlineKeyboardButton(text='За сегодня',
+                                          callback_data=type + id_project + '.today')
+    week = types.InlineKeyboardButton(text='За неделю',
+                                          callback_data=type + id_project + '.week')
+    all_time = types.InlineKeyboardButton(text='За всё время',
+                                          callback_data=type + id_project + '.all')
+    inline_kb_full.add(today)
+    inline_kb_full.add(week)
+    inline_kb_full.add(all_time)
     return inline_kb_full
 
 
