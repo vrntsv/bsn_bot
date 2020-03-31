@@ -8,7 +8,7 @@ def bar_chart(data, date, legend, pict_name, other_names = ['' for i in range(3)
     # legend - список со строками
     # pict_name - строка
     # other_names - список со строками [название графика, название оси x, название оси y]
-    data = data.transpose()
+    data = np.array(data).transpose()
     n_series = len(legend)
     n_observations = len(date)
     x = np.arange(n_observations)
@@ -54,9 +54,9 @@ def line_chart(data, date, legend, pict_name, other_names = ['' for i in range(3
     plt.savefig(pict_name + '.png', bbox_inches='tight', dpi=80)
 
 
-# data = np.array([[1, 20, 30],
-#                  [40, 5, 6],
-#                  [7, 80, 9]])
+data = np.array([[1, 20, 30],
+                 [40, 5, 6],
+                 [7, 80, 9]])
 
 data = np.random.randint(500, size=(3, 30))
 print(data)
@@ -67,4 +67,4 @@ other_names = ['Название графика', 'Ось x', 'Ось y']
 
 bar_chart(data, date, legend, 'name_bar', other_names)
 
-line_chart(data, date, legend, 'name_line', other_names)
+# line_chart(data, date, legend, 'name_line', other_names)

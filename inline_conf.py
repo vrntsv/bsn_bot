@@ -17,8 +17,17 @@ add_template_projects = 'proj_add_template_'
 add_template_answer_time = '_answer_time_add_template'
 add_template_conf = '_conf_add_template'
 add_template_cancel = 'add_template_cancel'
+graph_back_to_proj = 'graph_back_to_proj_'
 
 graph_liniar = 'graph_liniar_'
+graph_liniar_menu = 'menu_graph_liniar_'
+graph_liniar_choose_day = 'choose_day_graph_liniar_'
+
+
+
+graph_bar = 'graph_bar_'
+graph_bar_menu = 'menu_graph_bar_'
+graph_bar_choose_day = 'choose_day_graph_bar_'
 
 template_change_time = 'template_change_time_'
 template_change_day = 'template_change_day_'

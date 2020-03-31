@@ -156,7 +156,7 @@ def project_card(id_project, id_admin):
     statistics = types.InlineKeyboardButton('📈 Графики 1 ',
                                             callback_data=inline_conf.graph_liniar + str(id_project))
     statistics_two = types.InlineKeyboardButton('📊 Графики 2 ',
-                                            callback_data=inline_conf.project_ + str(id_project))
+                                            callback_data=inline_conf.graph_bar + str(id_project))
     empl_fine = types.InlineKeyboardButton('🔏 Штрафы',
                                            callback_data=inline_conf.project_ + str(id_project) + '_fine_proj_')
 
@@ -177,16 +177,35 @@ def project_card(id_project, id_admin):
 
 
 def graph_markup(type, id_project):
+    print('type', type)
     inline_kb_full = types.InlineKeyboardMarkup(row_width=2)
     today = types.InlineKeyboardButton(text='За сегодня',
                                           callback_data=type + id_project + '.today')
     week = types.InlineKeyboardButton(text='За неделю',
                                           callback_data=type + id_project + '.week')
+    month = types.InlineKeyboardButton(text='За месяц',
+                                          callback_data=type + id_project + '.month')
     all_time = types.InlineKeyboardButton(text='За всё время',
                                           callback_data=type + id_project + '.all')
+    chosen_day = types.InlineKeyboardButton(text='Выбрать день',
+                                          callback_data='choose_day_' + type + str(id_project))
+    print('сhoose_day_' + type + str(id_project))
+    back_btn = types.InlineKeyboardButton(text='🔙 Назад', callback_data=inline_conf.project_ + str(id_project)
+                                                                         + '_to_card_proj_')
+
     inline_kb_full.add(today)
     inline_kb_full.add(week)
     inline_kb_full.add(all_time)
+    inline_kb_full.add(chosen_day)
+    inline_kb_full.add(back_btn)
+    return inline_kb_full
+
+
+def graph_back_markup(id_project, file_data):
+    inline_kb_full = types.InlineKeyboardMarkup(row_width=2)
+    back_btn = types.InlineKeyboardButton(text='🔙 Назад', callback_data=inline_conf.graph_back_to_proj
+                                                                         + str(id_project) + '.' + str(file_data))
+    inline_kb_full.add(back_btn)
     return inline_kb_full
 
 

@@ -1,10 +1,13 @@
 #!/home/dmitriy/help_on_road/venv/bin/python
 import telebot
 from telebot import types
-
 import cherrypy
-import datetime
+import telebot_calendar
+from telebot_calendar import CallbackData
+from telebot.types import ReplyKeyboardRemove, CallbackQuery
 
+import datetime
+import graph
 import config
 import util
 import config_markups as conf_mark
@@ -20,6 +23,8 @@ WEBHOOK_SSL_PRIV = './webhook_pkey.pem'
 
 WEBHOOK_URL_BASE = "https://%s:%s" % (WEBHOOK_HOST, WEBHOOK_PORT)
 WEBHOOK_URL_PATH = "/%s/" % (config.BOT_TOKEN)
+
+calendar_1 = CallbackData("calendar_1", "action", "year", "month", "day")
 
 bot = telebot.TeleBot(config.BOT_TOKEN)
 # message_text_handler(message)
@@ -45,6 +50,50 @@ def create_change_template_dict(id_user, project_data):
     CHANGE_TEMPLATE[id_user]['project_data'] = project_data
 
 
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(calendar_1.prefix))
+def callback_inline(call: CallbackQuery):
+    """
+    Обработка inline callback запросов
+    :param call:
+    :return:
+    """
+
+
+    # At this point, we are sure that this calendar is ours. So we cut the line by the separator of our calendar
+    print('11111')
+    print(call.data)
+    name, action, year, month, day = call.data.split(calendar_1.sep)
+    # Processing the calendar. Get either the date or None if the buttons are of a different type
+    date = telebot_calendar.calendar_query_handler(
+        bot=bot, call=call, name=name, action=action, year=year, month=month, day=day
+    )
+    print(date)
+    full_data = util.get_data_for_statistic(ADD_TEMPLATE[call.from_user.id]['project'], selected_day=date)
+    if ADD_TEMPLATE[call.from_user.id]['change_project'] == 'liniar':
+        graph.line_chart(full_data[1], 'За {}'.format(date.strftime('%d.%m.%Y')), full_data[0], str(call.from_user.id) + 'liniar',
+                         ['Статистика по проекту {}'.format(ADD_TEMPLATE[call.from_user.id]['project']), 'Время', 'Доход'])
+    elif ADD_TEMPLATE[call.from_user.id]['change_project'] == 'bar':
+        graph.bar_chart(full_data[1], 'За {}'.format(date.strftime('%d.%m.%Y')), full_data[0],
+                         str(call.from_user.id) + 'liniar',
+                         ['Статистика по проекту {}'.format(ADD_TEMPLATE[call.from_user.id]['project']), 'Время',
+                          'Доход'])
+    # There are additional steps. Let's say if the date DAY is selected, you can execute your code. I sent a message.
+    if action == "DAY":
+        bot.send_photo(
+            chat_id=call.from_user.id,
+            photo=str(call.from_user.id) + 'liniar.pnh',
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        print(f"{calendar_1}: Day: {date.strftime('%d.%m.%Y')}")
+    elif action == "CANCEL":
+        bot.send_message(
+            chat_id=call.from_user.id,
+            text="Выберите время",
+            reply_markup=conf_mark.graph_markup(ADD_TEMPLATE[call.from_user.id]['change_project'],
+                                                ADD_TEMPLATE[call.from_user.id]['project']),
+        )
+        print(f"{calendar_1}: Cancellation")
 
 
 @bot.message_handler(commands=['start'])
@@ -483,13 +532,88 @@ def tempalate_texts_get(call):
         bot.send_message(call.from_user.id, 'У вас нет шаблонов', reply_markup=conf_mark.add_text_markup(id_project))
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_liniar))
-def graph_liniar_menu(call):
-    data = call.data[inline_conf.graph_liniar:].split('.')
-    if data[1] == 'today':
-        pass
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_liniar_choose_day))
+def choose_day_liniar(call):
+    print('graph_liniar_choose_day')
+    create_new_template_dict(call.from_user.id)
     bot.delete_message(call.from_user.id, call.message.message_id)
-    bot.send_message(call.from_user.id, 'Выберите тип графика', reply_markup=conf_mark.graph_markup(inline_conf.graph_liniar, ))
+    id_project = call.data[inline_conf.graph_liniar_choose_day.__len__():]
+    ADD_TEMPLATE[call.from_user.id]['project'] = id_project
+    ADD_TEMPLATE[call.from_user.id]['change_project'] = 'liniar'
+
+    now = datetime.datetime.now()  # Get the current date
+    bot.send_message(
+        call.from_user.id,
+        "Выберите дату",
+        reply_markup=telebot_calendar.create_calendar(
+            name=calendar_1.prefix,
+            year=now.year,
+            month=now.month,  # Specify the NAME of your calendar
+        ),
+    )
+
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_liniar_menu))
+def graph_liniar_menu(call):
+    pass
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_liniar))
+def graph_liniar_call(call):
+    data = call.data[inline_conf.graph_liniar.__len__():].split('.')
+    bot.delete_message(call.from_user.id, call.message.message_id)
+
+    if data.__len__() > 1:
+        if data[1] == 'today':
+            print('today')
+            full_data = util.get_data_for_statistic(data[0], today=True)
+            graph.line_chart(full_data[1], 'За сегодня', full_data[0], str(call.from_user.id)+'liniar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        elif data[1] == 'week':
+            full_data = util.get_data_for_statistic(data[0], this_week=True)
+            graph.line_chart(full_data[1], 'За неделю', full_data[0], str(call.from_user.id)+'liniar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        elif data[1] == 'month':
+            full_data = util.get_data_for_statistic(data[0], this_month=True)
+            graph.line_chart(full_data[1], 'За последний месяц', full_data[0], str(call.from_user.id)+'liniar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        elif data[1] == 'all':
+            full_data = util.get_data_for_statistic(data[0])
+            graph.line_chart(full_data[1], 'За всё время', full_data[0], str(call.from_user.id)+'liniar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        bot.send_photo(call.from_user.id,  str(call.from_user.id)+'liniar.png', reply_markup=conf_mark.graph_back_markup(data[0], str(call.from_user.id)+'liniar.png'))
+        return
+    else:
+
+        bot.send_message(call.from_user.id, 'Выберите тип графика', reply_markup=conf_mark.graph_markup(inline_conf.graph_liniar, data[0]))
+        return
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_bar))
+def graph_bar_call(call):
+    data = call.data[inline_conf.graph_bar.__len__():].split('.')
+    bot.delete_message(call.from_user.id, call.message.message_id)
+
+    if data.__len__() > 1:
+        print('trur')
+        if data[1] == 'today':
+            print(data[0], ' fafaf')
+            full_data = util.get_data_for_statistic(data[0], today=True)
+            print(full_data)
+            graph.bar_chart(full_data[1], [1], full_data[0], str(call.from_user.id)+'bar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        elif data[1] == 'week':
+            full_data = util.get_data_for_statistic(data[0], this_week=True)
+            graph.bar_chart(full_data[1], 'За неделю', full_data[0], str(call.from_user.id)+'bar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        elif data[1] == 'month':
+            full_data = util.get_data_for_statistic(data[0], this_month=True)
+            graph.bar_chart(full_data[1], 'За последний месяц', full_data[0], str(call.from_user.id)+'bar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        elif data[1] == 'all':
+            full_data = util.get_data_for_statistic(data[0])
+            graph.bar_chart(full_data[1], 'За всё время', full_data[0], str(call.from_user.id)+'bar', ['Статистика по проекту {}'.format(data[0]), 'Время', 'Доход'])
+        bot.send_photo(call.from_user.id,  str(call.from_user.id)+'bar.png', reply_markup=conf_mark.graph_back_markup(data[0], str(call.from_user.id)+'bar.png'))
+        return
+    else:
+
+        bot.send_message(call.from_user.id, 'Выберите тип графика', reply_markup=conf_mark.graph_markup(inline_conf.graph_bar, data[0]))
+        return
+
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_text_add))
 def templates_text_add(call):
@@ -590,6 +714,8 @@ def add_template_conf(call):
 
     bot.send_message(call.from_user.id, txt, parse_mode='HTML',
                      reply_markup=conf_mark.project_card(company['id'], call.from_user.id))
+
+
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_menu))

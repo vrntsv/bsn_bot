@@ -76,6 +76,14 @@ def execute(sql, *args, commit=False):
         return ans
 
 
+def monthdelta(date, delta):
+    m, y = (date.month+delta) % 12, date.year + ((date.month)+delta-1) // 12
+    if not m: m = 12
+    d = min(date.day, [31,
+        29 if y%4==0 and not y%400==0 else 28,31,30,31,30,31,31,30,31,30,31][m-1])
+    return date.replace(day=d,month=m, year=y)
+
+
 def check_employees_in_db(id_user):
     sql = execute('SELECT * FROM employees WHERE id=%(p)s', id_user)
     print(sql)
@@ -166,6 +174,48 @@ def get_all_user_project(id_user):
 
 def get_company_by_id(id_company):
     return execute('SELECT * FROM company_list WHERE id=%(p)s', id_company)[0]
+
+
+
+
+def get_data_for_statistic(id_company,
+                           this_week=None,
+                           this_month=None,
+                           today=None,
+                           selected_day=None):
+    fine_list = []
+    emp_list = []
+    emps = execute('SELECT id FROM employees WHERE id_company=%(p)s', id_company)
+    print(emps)
+    for emp in emps:
+        temp = 0
+        emp_list.append(emp['id'])
+        sql = 'SELECT * FROM reports WHERE id_user={} '.format(emp['id'])
+        if this_month:
+            sql += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') < 30'.format(str(datetime.date.today()).replace('-', '.'))
+
+        if this_week:
+            sql += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') < 7'.format(str(datetime.date.today()).replace('-', '.'),
+                                                                   str(datetime.date.today()-datetime.timedelta(days=7)).replace('-', '.'))
+        if today:
+            sql += ' AND TIMESTAMPDIFF(day, date_answer, \'{}\') = 0'.format(str(datetime.date.today()).replace('-', '.'))
+        if selected_day:
+            sql += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') < 30'.format(str(selected_day).replace('-', '.'))
+
+        print(sql)
+        emp_data = execute(sql)
+        print(emp_data)
+
+        if emp_data == ():
+            temp.append(0)
+            continue
+        for i in emp_data:
+            temp.append(i['answer'])
+        fine_list.append(temp)
+    return [emp_list, fine_list]
+
+
+
 
 
 def get_template_by_project_id(id_project):
@@ -369,3 +419,6 @@ def start_subscribe(id_admin, days=None):
 #         return True
 #     else:
 #         return False
+
+if __name__ == '__main__':
+    print(get_data_for_statistic(39, this_month=True))
