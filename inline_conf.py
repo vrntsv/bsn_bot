@@ -18,7 +18,7 @@ day = 'day_'
 template_ = 'template_'
 
 add_template_projects = 'proj_add_template_'
-add_template_answer_time = '_answer_time_add_template'
+create_company_answer_time = '_answer_time_create_company'
 add_template_conf = '_conf_add_template'
 add_template_cancel = 'add_template_cancel'
 graph_back_to_proj = 'graph_back_to_proj_'

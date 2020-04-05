@@ -55,7 +55,7 @@ def clock_inline(hour, minute):
 def time_to_answer_inline():
     inline_key = types.InlineKeyboardMarkup()
     for i in range(1, 8):
-        hour = types.InlineKeyboardButton(str(i), callback_data=inline_conf.add_template_answer_time+str(i))
+        hour = types.InlineKeyboardButton(str(i), callback_data=inline_conf.create_company_answer_time+str(i))
         inline_key.add(hour)
     return inline_key
 

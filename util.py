@@ -49,8 +49,8 @@ def connect():
       config.db_user,
       config.db_password,
       config.db_database,
-      # port='8889',
-      # unix_socket=config.db_unix_socket,
+      port='8889',
+      unix_socket=config.db_unix_socket,
       use_unicode=True,
       charset=config.db_charset,
       cursorclass=pymysql.cursors.DictCursor)
@@ -178,6 +178,17 @@ def get_all_user_project(id_user):
 
 def get_company_by_id(id_company):
     return execute('SELECT * FROM company_list WHERE id=%(p)s', id_company)[0]
+
+
+def get_company_fine_by_id(id_company):
+    try:
+        sum = execute('SELECT SUM(ammount) FROM fines WHERE id_project=%(p)s', id_company)[0]['SUM(ammount)']
+        if not sum:
+            return 0
+        else:
+            return sum
+    except Exception:
+        return 0
 
 def get_data_for_graph(id_company, id_user=None, all_template=None, current_template=None,
                        this_week=None,
@@ -413,7 +424,7 @@ def update_company(id_project,
 
     execute('UPDATE company_list SET time_to_send=%(p)s, time_to_answer=%(p)s, monday=%(p)s, tuesday=%(p)s, '
             'wednesday=%(p)s, thursday=%(p)s, friday=%(p)s, saturday=%(p)s, sunday=%(p)s WHERE id=%(p)s',
-            time_to_send, time_to_answer, week_list[0], week_list[1], week_list[2], week_list[3], week_list[4],
+            time_to_send, time_plus(time_to_send, time_to_answer), week_list[0], week_list[1], week_list[2], week_list[3], week_list[4],
             week_list[5], week_list[6], id_project, commit=True)
 
 
@@ -471,7 +482,6 @@ def delete_company(id_company):
             bot.send_message(user['id'], 'Компания {} была удалена.'.format(user['name_company']))
         except Exception as e:
             print(e)
-
     return res[:-2]
 
 
