@@ -2,6 +2,7 @@ empl_card_ = 'empl_card_'
 
 recovery_menu_ = 'recovery_menu_'
 
+fines = 'fines_'
 
 project_ = 'project_'
 project_card_ = 'project_card_'
@@ -13,6 +14,9 @@ add_empl_to_project_ = 'add_empl_to_project_'
 list_empl_from_proj_ = 'list_empl_from_proj_'
 
 day = 'day_'
+
+template_ = 'template_'
+
 add_template_projects = 'proj_add_template_'
 add_template_answer_time = '_answer_time_add_template'
 add_template_conf = '_conf_add_template'
@@ -29,11 +33,14 @@ graph_bar = 'graph_bar_'
 graph_bar_menu = 'menu_graph_bar_'
 graph_bar_choose_day = 'choose_day_graph_bar_'
 
-template_change_time = 'template_change_time_'
-template_change_day = 'template_change_day_'
-template_change_name = 'template_change_name_'
-template_change_answer_time = 'template_change_answer_time_'
-template_change_id = 'template_change_id_'
+tempate_ = 'tempate_'
+
+company_change_time = 'company_change_time_'
+company_change_day = 'company_change_day_'
+company_change_name = 'company_change_name_'
+company_change_answer_time = 'company_change_answer_time_'
+company_change_id = 'company_change_id_'
+
 template_texts = 'template_texts_'
 template_texts_get = 'get_template_texts_'
 template_text_add = 'add_template_text_'

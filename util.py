@@ -1,6 +1,8 @@
 import pymysql.cursors
 import telebot
 import datetime
+from collections import OrderedDict
+
 import config_markups as conf_mark
 import config_text as conf_txt
 import random
@@ -22,7 +24,7 @@ def deploy_database():
     pass
 
 
-# # #стандартный коннект
+# #стандартный коннект
 # def connect():
 #     # #     """
 #     # #      Подключение к базе данных
@@ -37,7 +39,7 @@ def deploy_database():
 #         cursorclass=pymysql.cursors.DictCursor)
 
 
-# мак
+#мак
 def connect():
   """
    Подключение к базе данных
@@ -47,8 +49,8 @@ def connect():
       config.db_user,
       config.db_password,
       config.db_database,
-      port='8889',
-      unix_socket=config.db_unix_socket,
+      # port='8889',
+      # unix_socket=config.db_unix_socket,
       use_unicode=True,
       charset=config.db_charset,
       cursorclass=pymysql.cursors.DictCursor)
@@ -152,7 +154,9 @@ def get_recovery_for_employees(id_user):
 
 
 def generate_new_id_for_project(id_user, id_project):
-    new_id = id_user + random.randint(100, 9999)
+    # new_id = id_user + random.randint(100, 9999)
+    count = execute('SELECT COUNT(*) as count FROM company_list WHERE id_admin=%(p)s', id_user)
+    new_id = str(int(id_user+ random.randint(100, 9999))) + str(count)
     execute('UPDATE company_list SET id=%(p)s WHERE id_admin=%(p)s and id=%(p)s', new_id, id_user, id_project, commit=True)
     return new_id
 
@@ -175,6 +179,107 @@ def get_all_user_project(id_user):
 def get_company_by_id(id_company):
     return execute('SELECT * FROM company_list WHERE id=%(p)s', id_company)[0]
 
+def get_data_for_graph(id_company, id_user=None, all_template=None, current_template=None,
+                       this_week=None,
+                       this_month=None,
+                       today=None,
+                       selected_day=None):
+    count_day = 0
+    date = datetime.date.today()
+    if this_week:
+        count_day = 7
+    elif this_month:
+        count_day = 30
+    elif today:
+        count_day = 0
+    elif selected_day:
+        date = selected_day
+        count_day = 0
+
+    sql = 'SELECT * FROM reports WHERE id_company={}'.format(id_company)
+    if id_user:
+        sql += ' AND id_user={}'.format(id_user)
+    if current_template:
+        sql += ' AND id_question={}'.format(current_template)
+    #
+    if not id_user:
+        sql2 = 'SELECT id_user, e.full_name FROM reports LEFT JOIN employees e ON e.id=reports.id_user '
+
+
+    else:
+        sql2 = execute('SELECT * FROM reports WHERE id_company={} AND id_user={}'.format(id_company, id_user))
+
+    sql += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') <= {} ORDER BY `date_send` ASC'.format(date, count_day)
+    sql2 += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') <= {} WHERE reports.id_company={} ORDER BY `date_send` ASC' \
+            ''.format(date, count_day, id_company)
+
+    legend = execute(sql2)
+    # print(sql)
+    data = execute(sql)
+
+    print('LEGEND :', legend)
+
+    res = {}
+    #print('id_user', id_user)
+    legend = []
+    # for id in id_user:
+    #     legend.append(id['full_name'])
+    #     res[id['id_user']] = {}
+    #     res[id['id_user']]['data'] = []
+    #     res['date'] = []
+    for user in data:
+        res[user['id_user']]['data'].append(user['answer'])
+        res['date'].append(str(data[0]['date_send']))
+
+    finall = []
+    print('res ', res)
+    for data in res:
+        print(data)
+        #finall.append(data['data'])
+    # legend = res.keys()
+
+    # legend =
+    date = tuple(res['date'])
+    print('Legend: ', tuple(legend))
+    print('date ', date)
+
+    return res
+    # print(res)
+
+
+
+def get_fines(id_company):
+    fines = execute('SELECT * FROM reports WHERE fine IS NOT NULL AND id_company=%(p)s', id_company)
+    if fines:
+        return fines
+    else:
+        return False
+    # return fines
+
+
+
+def get_users_fines(id_user):
+    # print('id', id_user)
+    fines = execute('SELECT * FROM fines WHERE id_user=%(p)s LIMIT 5', id_user)
+    return fines
+
+
+
+def add_fine(id_company, id_user, comment, ammount):
+    execute('INSERT INTO fines(id_user, id_company, comment, ammount, date) VALUES(%(p)s, %(p)s, %(p)s, %(p)s, %(p)s)',
+            id_user, id_company, comment, ammount, datetime.date.today(), commit=True)
+
+
+def get_users_fines_sum(id_user):
+    sum = execute('SELECT SUM(ammount) FROM fines WHERE id_user=%(p)s', id_user)[0]['SUM(ammount)']
+    return sum
+
+
+def get_user_name_by_id(id_user):
+    # print(execute('SELECT full_name FROM employees WHERE id=%(p)s', id_user)[0]['full_name'])
+    name = execute('SELECT full_name FROM employees WHERE id=%(p)s', id_user)[0]['full_name']
+    return name
+
 
 
 
@@ -183,36 +288,42 @@ def get_data_for_statistic(id_company,
                            this_month=None,
                            today=None,
                            selected_day=None):
+    dates = []
     fine_list = []
     emp_list = []
     emps = execute('SELECT id FROM employees WHERE id_company=%(p)s', id_company)
-    print(emps)
     for emp in emps:
-        temp = 0
+        temp = []
         emp_list.append(emp['id'])
         sql = 'SELECT * FROM reports WHERE id_user={} '.format(emp['id'])
         if this_month:
-            sql += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') < 30'.format(str(datetime.date.today()).replace('-', '.'))
+            sql += ' AND TIMESTAMPDIFF(day ,date_send, \'{}\') < 30'.format(str(datetime.date.today()).replace('-', '.'))
 
         if this_week:
-            sql += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') < 7'.format(str(datetime.date.today()).replace('-', '.'),
+            sql += ' AND TIMESTAMPDIFF(day ,date_send, \'{}\') < 7'.format(str(datetime.date.today()).replace('-', '.'),
                                                                    str(datetime.date.today()-datetime.timedelta(days=7)).replace('-', '.'))
         if today:
-            sql += ' AND TIMESTAMPDIFF(day, date_answer, \'{}\') = 0'.format(str(datetime.date.today()).replace('-', '.'))
+            sql += ' AND TIMESTAMPDIFF(day, date_send, \'{}\') = 0'.format(str(datetime.date.today()).replace('-', '.'))
         if selected_day:
-            sql += ' AND TIMESTAMPDIFF(day ,date_answer, \'{}\') < 30'.format(str(selected_day).replace('-', '.'))
+            sql += ' AND TIMESTAMPDIFF(day ,date_send, \'{}\') < 30'.format(str(selected_day).replace('-', '.'))
 
-        print(sql)
         emp_data = execute(sql)
-        print(emp_data)
 
         if emp_data == ():
             temp.append(0)
             continue
         for i in emp_data:
-            temp.append(i['answer'])
+            dates.append(str(i['date_send']))
+            if i['date_answer'] == None:
+                temp.append(0)
+            else:
+                temp.append(i['answer'])
         fine_list.append(temp)
-    return [emp_list, fine_list]
+    print([emp_list, fine_list, OrderedDict.fromkeys(dates, None).keys()])
+    return [emp_list, fine_list, list(OrderedDict.fromkeys(dates, None).keys())]
+
+
+
 
 
 
@@ -300,7 +411,8 @@ def update_company(id_project,
         week_list[day['id']-1] = 1
     print("weekdays", week_list)
 
-    execute('UPDATE company_list SET time_to_send=%(p)s, time_to_answer=%(p)s, monday=%(p)s, tuesday=%(p)s, wednesday=%(p)s, thursday=%(p)s, friday=%(p)s, saturday=%(p)s, sunday=%(p)s WHERE id=%(p)s',
+    execute('UPDATE company_list SET time_to_send=%(p)s, time_to_answer=%(p)s, monday=%(p)s, tuesday=%(p)s, '
+            'wednesday=%(p)s, thursday=%(p)s, friday=%(p)s, saturday=%(p)s, sunday=%(p)s WHERE id=%(p)s',
             time_to_send, time_to_answer, week_list[0], week_list[1], week_list[2], week_list[3], week_list[4],
             week_list[5], week_list[6], id_project, commit=True)
 
@@ -317,8 +429,9 @@ def update_company_weekdays(id_project, weekdays):
             week_list[5], week_list[6], id_project, commit=True)
 
 
-def add_template_text(id_project, text):
-    execute('INSERT INTO questions_template(id_company, text) VALUES(%(p)s, %(p)s)', id_project, text, commit=True)
+def add_template_text(id_project, name, text):
+    execute('INSERT INTO questions_template(id_company, name, text) VALUES(%(p)s,  %(p)s, %(p)s)',
+            id_project, name, text, commit=True)
 
 
 def update_company_time_to_send(time_to_send):
@@ -372,7 +485,7 @@ def add_employees_in_project(id_company, user_list, not_added=None):
     for data in user_list:
         res += data + ', '
     print('Start sql')
-    sql = execute('SELECT id FROM employees WHERE id IN ({})'.format(res[:-2]))
+    sql = execute('SELECT id FROM employees WHERE id IN ({}) '.format(res[:-2]))
     print('SQL: ', sql)
     res2 = ''
     if sql:
@@ -389,7 +502,8 @@ def add_employees_in_project(id_company, user_list, not_added=None):
     print(user_list)
     for data in user_list:
         print(data)
-        execute('INSERT INTO employees(id, id_company) VALUES(%(p)s, %(p)s)', int(data), id_company, commit=True)
+        execute('INSERT INTO employees(id, full_name, id_company) VALUES(%(p)s, %(p)s, %(p)s)',
+                int(data), str(data+'Неизвестный'), id_company, commit=True)
 
 
     # print('NEw user list: ', user_list)
@@ -397,7 +511,6 @@ def add_employees_in_project(id_company, user_list, not_added=None):
         return not_added
     else:
         return False
-
 
 def check_free_trial(id_admin):
     sql = execute('SELECT * FROM admins WHERE id=%(p)s', id_admin)[0]['trial']
@@ -410,15 +523,31 @@ def check_free_trial(id_admin):
 
 def start_subscribe(id_admin, days=None):
     execute('INSERT INTO user_subscribe')
-# def check_active_employees(id_admin):
-#     sql = execute('SELECT * FROM employees e '
-#             'LEFT JOIN company_list cl ON cl.id=e.id_company '
-#             'WHERE cl.id_admin=%(p)s', id_admin)
-#     print(sql)
-#     if sql:
-#         return True
-#     else:
-#         return False
 
-if __name__ == '__main__':
-    print(get_data_for_statistic(39, this_month=True))
+def get_all_template_project(id_company):
+    sql = execute('SELECT * FROM questions_template WHERE id_company=%(p)s', id_company)
+    return sql
+
+def get_templat_by_id(id_template):
+    return execute('SELECT * FROM questions_template WHERE id=%(p)s', id_template)
+
+def add_empl_to_company(id_company, id_empl):
+    execute('UPDATE employees SET id_company=%(p)s WHERE id=%(p)s', id_company, id_empl, commit=True)
+
+def add_template(data):
+    execute('INSERT INTO questions_template(id_company, name, text) VALUE(%(p)s,%(p)s,%(p)s)',
+            data['id_company'], data['name'], data['question'], commit=True)
+    return execute('SELECT * FROM questions_template WHERE id_company=%(p)s AND name=%(p)s AND text=%(p)s',
+                   data['id_company'], data['name'], data['question'])[0]
+
+
+def get_all_empl_by_admin(id_user):
+    return execute('SELECT * FROM employees '
+                   'WHERE id_company IN(SELECT id FROM company_list WHERE id_admin=%(p)s)', id_user)
+
+def update_teplate(id_template, name=None, question=None):
+    if name:
+        execute('UPDATE questions_template SET name=%(p)s WHERE id=%(p)', name, id_template, commit=True)
+    elif question:
+        execute('UPDATE questions_template SET text=%(p)s WHERE id=%(p)', name, id_template, commit=True)
+    return execute('SELECT * FROM questions_template WHERE id=%(p)s', id_template)[0]

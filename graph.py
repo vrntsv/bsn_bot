@@ -2,12 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def bar_chart(data, date, legend, pict_name, other_names = ['' for i in range(3)]):
+def bar_chart(data, date, legend, pict_name, other_names=None):
     # data - матрица, тип ndarray, число строк = длина legend, число столбцов = длина date
     # date - список со строками
     # legend - список со строками
     # pict_name - строка
     # other_names - список со строками [название графика, название оси x, название оси y]
+    if not data or not legend or not date:
+        return False
+    if other_names is None:
+        other_names = ['' for i in range(3)]
     data = np.array(data).transpose()
     n_series = len(legend)
     n_observations = len(date)
@@ -31,10 +35,19 @@ def bar_chart(data, date, legend, pict_name, other_names = ['' for i in range(3)
     ax.set_xticks(x)
     ax.set_xticklabels(date)
     ax.legend()
-    plt.savefig(pict_name + '.png', bbox_inchåes='tight', dpi=80)
+    try:
+        plt.savefig('img/' + pict_name + '.png', bbox_inches='tight', dpi=80)
+        # plt.savefig('img/' + pict_name + '.png', bbox_inches='tight', dpi=80)
+        return True
+    except Exception as e:
+        return False
 
 
-def line_chart(data, date, legend, pict_name, other_names = ['' for i in range(3)]):
+
+
+def line_chart(data, date, legend, pict_name, other_names=None):
+    if other_names is None:
+        other_names = ['' for i in range(3)]
     fig, ax = plt.subplots(figsize=(18.5, 10.5))
     for row, leg in zip(data, legend):
         line, = ax.plot(date, row, label=leg, marker='o')
@@ -51,20 +64,9 @@ def line_chart(data, date, legend, pict_name, other_names = ['' for i in range(3
     ax.set_ylabel(other_names[2])
     ax.set_xticklabels(date)
     ax.legend()
-    plt.savefig(pict_name + '.png', bbox_inches='tight', dpi=80)
+    try:
+        plt.savefig('img/' + pict_name + '.png', bbox_inches='tight', dpi=80)
+        return True
+    except Exception as e:
+        return False
 
-
-data = np.array([[1, 20, 30],
-                 [40, 5, 6],
-                 [7, 80, 9]])
-
-data = np.random.randint(500, size=(3, 30))
-print(data)
-legend = ['Alex', 'Boris', 'Gena']
-# date = ['10.03.2020', '12.04.2020', '15.05.2021']
-date = [f'{i}' for i in range(30)]
-other_names = ['Название графика', 'Ось x', 'Ось y']
-
-bar_chart(data, date, legend, 'name_bar', other_names)
-
-# line_chart(data, date, legend, 'name_line', other_names)
