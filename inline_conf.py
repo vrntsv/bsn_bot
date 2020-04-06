@@ -13,8 +13,10 @@ back_to_project = 'back_to_project_'
 add_empl_to_project_ = 'add_empl_to_project_'
 list_empl_from_proj_ = 'list_empl_from_proj_'
 
+setting_ = 'setting_'
 day = 'day_'
-
+change_day_to_send_ = 'change_day_to_send_'
+setting_change_time_ = 'setting_change_time_'
 template_ = 'template_'
 
 add_template_projects = 'proj_add_template_'
@@ -34,6 +36,7 @@ graph_bar_menu = 'menu_graph_bar_'
 graph_bar_choose_day = 'choose_day_graph_bar_'
 
 tempate_ = 'tempate_'
+confirm_markup_ = 'confirm_markup_'
 
 company_change_time = 'company_change_time_'
 company_change_day = 'company_change_day_'
@@ -56,6 +59,12 @@ change_time_minus_hour = 'change_time_minus_hour'
 change_time_plus_hour = 'change_time_plus_hour'
 change_time_minus_minute = 'change_time_minus_minute'
 change_time_plus_minute = 'change_time_plus_minute'
+
+setting_change_time = 'change_time_'
+setting_change_time_minus_hour = 'change_time_minus_hour'
+setting_change_time_plus_hour = 'change_time_plus_hour'
+setting_change_time_minus_minute = 'change_time_minus_minute'
+setting_change_time_plus_minute = 'change_time_plus_minute'
 
 template_menu = 'template_menu_'
 add_template = 'add_template_'

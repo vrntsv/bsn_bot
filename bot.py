@@ -34,6 +34,7 @@ REGISTRATION = {}
 CREATE_COMPANY = {}
 CHANGE_TEMPLATE = {}
 TEMPLATE = {}
+CHANGE_SETTING = {}
 
 def create_new_project_dict(id_user):
     CREATE_COMPANY[id_user] = {}
@@ -48,8 +49,18 @@ def create_new_project_dict(id_user):
     CREATE_COMPANY[id_user]['change_project'] = []
 
 
-def create_change_template_dict(id_user, project_data):
-    CHANGE_TEMPLATE[id_user]['project_data'] = project_data
+# def create_change_template_dict(id_user, project_data):
+#     CHANGE_TEMPLATE[id_user]['project_data'] = project_data
+
+
+def create_new_change_settings_time_dict(id_user, id_company):
+    company = util.get_company_by_id(id_company)
+    CHANGE_SETTING[id_user] = {}
+    CHANGE_SETTING[id_user]['id_company'] = id_company
+    CHANGE_SETTING[id_user]['time'] = company['time_to_send']
+
+
+
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(calendar_1.prefix))
@@ -262,13 +273,15 @@ def project_menu(call):
     print('Call data 261: ', call.data)
     if call.data[len(inline_conf.project_):] == 'back':
         print('to back')
-        bot.edit_message_text('Выберите проект или создайте новый ⤵', call.from_user.id,
-                              call.message.message_id, reply_markup=conf_mark.project_menu(call.from_user.id))
+        bot.delete_message(call.from_user.id, call.message.message_id)
+        bot.send_message(call.from_user.id, 'Выберите проект или создайте новый ⤵',
+                         reply_markup=conf_mark.project_menu(call.from_user.id), parse_mode='HTML')
         return
     elif call.data[len(inline_conf.project_):] == 'new_project':
         print('Создание нового проекта: ', call.from_user.id)
-        msg = bot.edit_message_text('Введите название вашего проекта ⤵', call.from_user.id, call.message.message_id,
-                                    parse_mode='HTML')
+        bot.delete_message(call.from_user.id, call.message.message_id)
+        msg = bot.send_message(call.from_user.id,'Введите название вашего проекта ⤵',
+                                    reply_markup=conf_mark.cancel_button(), parse_mode='HTML')
         bot.register_next_step_handler(msg, create_new_company)
         return
     elif call.data[len(call.data)-len('_conf_delete'):] == '_conf_delete':
@@ -280,13 +293,25 @@ def project_menu(call):
         bot.send_message(call.from_user.id, 'Выберите проект или создайте новый ⤵', parse_mode='HTML',
                          reply_markup=conf_mark.project_menu(call.from_user.id))
         return
+    elif call.data[len(call.data)-len('_cancel_delete'):] == '_cancel_delete':
+        id_company = call.data[len(inline_conf.project_):-len('_cancel_delete')]
+        project = util.get_company_by_id(id_company)
+        text = conf_txt.company_state.format(str(id_company),
+                                             project['name_company'],
+                                             str(project['time_to_send']),
+                                             util.get_days_str_by_project_id(id_company),
+                                             str(project['time_to_answer']))
+        # bot.send_message(call.from_user.id, text, parse_mode='HTML')
+        bot.edit_message_text(text, call.from_user.id, call.message.message_id,
+                                    reply_markup=conf_mark.template_settings(id_company), parse_mode='HTML')
+        return
     elif call.data[len(call.data)-len('delete'):] == 'delete':
         print('Try delelete deal')
         id_company = call.data[len(inline_conf.project_):-len('delete')]
         company = util.get_company_by_id(id_company)
         bot.edit_message_text('Вы действительно хотите удалить проект <code>{}</code>'
                               ''.format(company['name_company'].upper()), call.from_user.id, call.message.message_id,
-                                    parse_mode='HTML', reply_markup=conf_mark.confirm_delete(id_company))
+                                    parse_mode='HTML', reply_markup=conf_mark.confirm_delete_project(id_company))
 
         return
     elif call.data[len(call.data)-len('_list_empl_from_proj_'):] == '_list_empl_from_proj_':
@@ -310,18 +335,6 @@ def project_menu(call):
         util.add_empl_to_company(id_company, call.from_user.id)
         bot.send_message(call.from_user.id, 'Ваша компания {}'.format(company['name_company'], parse_mode='HTML'),
                          reply_markup=conf_mark.employee())
-        return
-    elif call.data[len(call.data) - len('_setting'):] == '_setting':
-        id_project = call.data[len(inline_conf.project_): call.data.find('_setting'):]
-        project = util.get_company_by_id(id_project)
-
-        text = conf_txt.company_state.format(str(id_project),
-                                              project['name_company'],
-                                              str(project['time_to_send']),
-                                              util.get_days_str_by_project_id(id_project),
-                                              str(project['time_to_answer']))
-        bot.send_message(call.from_user.id, text, parse_mode='HTML',
-                         reply_markup=conf_mark.template_settings(id_project))
         return
     elif call.data[len(call.data)-len('_fine_proj_'):] == '_fine_proj_':
         print('fine menu')
@@ -361,40 +374,19 @@ def project_menu(call):
         call.message.message_id, parse_mode='HTML', reply_markup=conf_mark.project_card(id_company, call.from_user.id))
 
 
-
-def confirm_delete(message, company):
-    proj_name = str(company['name_company']).upper()
-    # print('User: ', message.text, '   name: ', proj_name)
-    if message.text == proj_name:
-        g = util.delete_company(company['id'])
-        print('G: ', g)
-        if g:
-            bot.send_message(message.from_user.id, 'Компания успешно удалена. Пользователи <code>{}</code> '
-                                               'ждут новой работы'.format(g), parse_mode='HTML')
-        else:
-            bot.send_message(message.from_user.id, 'Компания успешно удалена.', parse_mode='HTML')
-
-        bot.send_message(message.from_user.id, 'Выберите проект или создайте новый ⤵', parse_mode='HTML',
-                         reply_markup=conf_mark.project_menu(message.from_user.id))
-    else:
-        bot.send_message(message.from_user.id, 'Название введено некорректно!', parse_mode='HTML')
-        bot.send_message(message.from_user.id, 'Выберите проект или создайте новый ⤵', parse_mode='HTML',
-                                          reply_markup=conf_mark.project_menu(message.from_user.id))
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.add_empl_to_project_))
-def add_empl_to_project(call):
-    print('Call data', call.data)
-
-    id_company = call.data[len(inline_conf.add_empl_to_project_):-len('_to_proj_card')]
-    print('1 id company: ', id_company)
-    bot.delete_message(call.from_user.id, call.message.message_id)
-
-    msg = bot.send_message(call.from_user.id,
-                           'Введите id одного или нескольких пользователей, через запятую напр(111, 222, 333) ⤵',
-                           parse_mode='HTML', reply_markup=conf_mark.cancel_button())
-
-    bot.register_next_step_handler(msg, add_employerr_in_project, id_company)
+# @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.add_empl_to_project_))
+# def add_empl_to_project(call):
+#     print('Call data', call.data)
+#
+#     id_company = call.data[len(inline_conf.add_empl_to_project_):-len('_to_proj_card')]
+#     print('1 id company: ', id_company)
+#     bot.delete_message(call.from_user.id, call.message.message_id)
+#
+#     msg = bot.send_message(call.from_user.id,
+#                            'Введите id одного или нескольких пользователей, через запятую напр(111, 222, 333) ⤵',
+#                            parse_mode='HTML', reply_markup=conf_mark.cancel_button())
+#
+#     bot.register_next_step_handler(msg, add_employerr_in_project, id_company)
 
 
 def add_employerr_in_project(message, id_company):
@@ -437,7 +429,7 @@ def add_employerr_in_project(message, id_company):
                      parse_mode='HTML', reply_markup=conf_mark.project_card(id_company, message.from_user.id))
 
 def create_new_company(message):
-    if message.text == 'Отменить':
+    if message.text == 'Отмена':
         bot.send_message(message.from_user.id, 'Отмена действия: "Создание проекта"', parse_mode='HTML',
                          reply_markup=conf_mark.project_menu(message.from_user.id))
         return
@@ -476,7 +468,11 @@ def action_callback(call):
     bot.answer_callback_query(call.id)
     inline_key = telebot.types.InlineKeyboardMarkup()
     day_id_in_message = int(call.data[len(inline_conf.day):])
+    print('day_id_in_message: ', day_id_in_message)
+    print("CREATE_COMPANY[call.from_user.id]['status_weekdays']: ", CREATE_COMPANY[call.from_user.id]['status_weekdays'])
+
     for wd_user in CREATE_COMPANY[call.from_user.id]['status_weekdays']:
+        # print('wd_user: ', wd_user)
         if wd_user['id'] == day_id_in_message:
             wd_user['status'] = not wd_user['status']
             if wd_user['status']:
@@ -552,25 +548,41 @@ def template_menu(call):
         bot.edit_message_text('Выберите метрику или создайте новую ⤵', chat_id=call.from_user.id,
                               message_id=call.message.message_id, parse_mode='HTML',
                               reply_markup=conf_mark.templ_from_proj(id_company, templates))
+    elif call.data[len(call.data)-len('_to_templ_card_'):] =='_to_templ_card_':
+        print('Templ card')
+        id_template = call.data[len('template_'):-len('_to_templ_card_')]
+        # print(id_template)
+        template = util.get_templat_by_id(id_template)[0]
+        # print('TEMPLATE DATE: ', template)
+        bot.delete_message(call.from_user.id, call.message.message_id)
+        bot.send_message(call.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
+                         reply_markup=conf_mark.template_card(id_template, template['id_company']))
+
+
     elif call.data[len(call.data)-len('_create_new_templ'):] == '_create_new_templ':
         print('try create a new teplate')
-        id_company = call.data[len('template_'):-len('_create_new_templ')]
+        id_template = call.data[len('template_'):-len('_create_new_templ')]
         bot.delete_message(chat_id=call.from_user.id, message_id=call.message.message_id)
         msg = bot.send_message(call.from_user.id, 'Введите название метрики ⤵', reply_markup=conf_mark.cancel_button())
-        bot.register_next_step_handler(msg, create_new_template, id_company)
+        bot.register_next_step_handler(msg, create_new_template, id_template)
         return
     elif call.data[len(call.data) - len('_delete'):] == '_delete':
+        id_template = call.data[len('template_'):-len('_delete')]
+        bot.delete_message(call.from_user.id, call.message.message_id)
+        bot.send_message(call.from_user.id, 'Вы уверены, что хотите удалить метрику? '
+                                '\n<b>Все отчеты по этой метрике будут уделаны безвозвратно.</b>', parse_mode='HTML',
+                         reply_markup=conf_mark.delete_confirm_markup(id_template, template=True))
         return
-    # elif call.data[len(call.data) - len('_edit_templ'):] == '_edit_templ':
-    #     pass
     elif call.data[len(call.data) - len('_change_name'):] == '_change_name':
         id_template = call.data[len('template_'):-len('_change_name')]
-        msg = bot.send_message(call.from_user.id, 'Введите новое название шаблона ⤵',
+        bot.delete_message(call.from_user.id, call.message.message_id)
+        msg = bot.send_message(call.from_user.id, 'Введите новое название метрики ⤵',
                                reply_markup=conf_mark.cancel_button())
         bot.register_next_step_handler(msg, change_name_template, id_template)
         return
     elif call.data[len(call.data) - len('_change_question'):] == '_change_question':
         id_template = call.data[len('template_'):-len('_change_question')]
+        bot.delete_message(call.from_user.id, call.message.message_id)
         msg = bot.send_message(call.from_user.id, 'Введите новый вопрос ⤵', reply_markup=conf_mark.cancel_button())
         bot.register_next_step_handler(msg, change_question_template, id_template)
         return
@@ -580,35 +592,6 @@ def template_menu(call):
     #     bot.register_next_step_handler(message, create_new_template, id_company)
     else:
         pass
-
-
-def change_name_template(message, id_template):
-    if message.text == 'Отмена':
-        bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
-        template = util.get_templat_by_id(id_template)
-        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
-                         reply_markup=conf_mark.template_card(template['id'], template['id_company']))
-    else:
-        bot.delete_message(change_id=message.from_user.id, message_id=message.message.id)
-        template = util.update_teplate(id_template, name=message.text)
-        bot.send_message(message.from_user.id, 'Имя метрики успешно изменено.', reply_markup=conf_mark.admin())
-        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
-            reply_markup=conf_mark.template_card(template['id'], template['id_company']))
-
-
-def change_question_template(message, id_template):
-    if message.text == 'Отмена':
-        bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
-        template = util.get_templat_by_id(id_template)
-        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
-                         reply_markup=conf_mark.template_card(template['id'], template['id_company']))
-    else:
-        bot.delete_message(change_id=message.from_user.id, message_id=message.id)
-        template = util.update_teplate(id_template, question=message.text)
-        bot.send_message(message.from_user.id, 'Вопрос успешно изменен.', reply_markup=conf_mark.admin())
-        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
-            reply_markup=conf_mark.template_card(template['id'], template['id_company']))
-
 
 def create_new_template(message, id_company):
     if message.text == 'Отмена':
@@ -639,94 +622,208 @@ def add_question_to_template(message):
                     reply_markup=conf_mark.template_card(tempate['id'], TEMPLATE[message.from_user.id]['id_company']))
         del TEMPLATE[message.from_user.id]
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.confirm_markup_))
+def comfirm_menu(call):
+    # print(call.data)
+    if call.data[len(call.data) - len('_template'):] == '_template':
+        print('Template menu')
+        if call.data.find('_yes_') != -1:
+            bot.delete_message(call.from_user.id, call.message.message_id)
+            id_template = call.data[len('confirm_markup_'):call.data.find('_yes_')]
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.company_change_name))
-def company_change_name(call):
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    msg = bot.send_message(call.from_user.id, 'Введите новое название проекта')
-    bot.register_next_step_handler(msg, company_change_name_done)
+            template = util.get_templat_by_id(id_template)[0]
+            templates = util.get_all_template_project(template['id_company'])
+
+            util.delete_template(id_template)
+            bot.send_message(call.from_user.id, 'Метрика успешно удалена')
+            bot.send_message(call.from_user.id, 'Выберите метрику или создайте новую ⤵',
+                             message_id=call.message.message_id, parse_mode='HTML',
+                             reply_markup=conf_mark.templ_from_proj(id_company, templates))
+
+        elif call.data.find('_no_') != -1:
+            bot.delete_message(call.from_user.id, call.message.message_id)
+            id_template = call.data[len('confirm_markup_'):call.data.find('_no_')]
+            bot.send_message(call.from_user.id, 'ДЕЙСТВИЕ ОТМЕНЕНО: удаление метрики')
+
+            template = util.get_templat_by_id(id_template)[0]
+            templates = util.get_all_template_project(template['id_company'])
+            bot.send_message(call.from_user.id, 'Выберите метрику или создайте новую ⤵',
+                             message_id=call.message.message_id, parse_mode='HTML',
+                             reply_markup=conf_mark.templ_from_proj(id_company, templates))
+            return
 
 
-def company_change_name_done(message):
-    util.update_company_name(message.text, CREATE_COMPANY[message.from_user.id]['project'])
-    inline_key = types.InlineKeyboardMarkup()
+def change_name_template(message, id_template):
+    if message.text == 'Отмена':
+        bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        template = util.get_templat_by_id(id_template)
+        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
+                         reply_markup=conf_mark.template_card(template['id'], template['id_company']))
+    else:
+        bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        template = util.update_teplate(id_template, name=message.text)
+        bot.send_message(message.from_user.id, 'Имя метрики успешно изменено.', reply_markup=conf_mark.admin())
+        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
+            reply_markup=conf_mark.template_card(template['id'], template['id_company']))
 
-    bot.send_message(message.from_user.id, 'Название проекта было изменено')
 
-    id_project = CREATE_COMPANY[message.from_user.id]['project']
+def change_question_template(message, id_template):
+    if message.text == 'Отмена':
+        bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        template = util.get_templat_by_id(id_template)
+        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
+                         reply_markup=conf_mark.template_card(template['id'], template['id_company']))
+    else:
+        bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        template = util.update_teplate(id_template, question=message.text)
+        bot.send_message(message.from_user.id, 'Вопрос успешно изменен.', reply_markup=conf_mark.admin())
+        bot.send_message(message.from_user.id, conf_txt.create_text_template(template['name'], template['text']),
+            reply_markup=conf_mark.template_card(template['id'], template['id_company']))
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.setting_))
+def setting_menu(call):
+    if call.data[len(call.data) - len('_setting_menu'):] == '_setting_menu':
+        bot.delete_message(call.from_user.id, call.message.message_id)
+        id_project = call.data[len('setting_'):call.data.find('_setting_menu')]
+        project = util.get_company_by_id(id_project)
+        text = conf_txt.company_state.format(str(id_project), project['name_company'], str(project['time_to_send']),
+                                              util.get_days_str_by_project_id(id_project),
+                                              str(project['time_to_answer']))
+        bot.send_message(call.from_user.id, text, parse_mode='HTML',
+                         reply_markup=conf_mark.template_settings(id_project))
+    elif call.data[len(call.data) - len('_change_name'):] == '_change_name':
+        pass
+    elif call.data[len(call.data) - len('_change_id_proj'):] == '_change_id_proj':
+        bot.delete_message(call.from_user.id, call.message.message_id)
+        id_project = call.data[len('setting_'):call.data.find('_change_id_proj')]
+
+        project = util.generate_new_id_for_project(call.from_user.id, id_project)
+        bot.send_message(call.from_user.id, 'ID вашего проекта изменен на {}'.format(project['id']))
+
+        # project = util.get_company_by_id(id_project)
+        text = conf_txt.company_state.format(project['id'],
+                                             project['name_company'],
+                                             str(project['time_to_send']),
+                                             util.get_days_str_by_project_id(project['id']),
+                                             str(project['time_to_answer']))
+        bot.send_message(call.from_user.id, text, parse_mode='HTML',
+                         reply_markup=conf_mark.template_settings(project['id']))
+
+    elif call.data[len(call.data) - len('_change_name_proj'):] == '_change_name_proj':
+        pass
+    elif call.data[len(call.data) - len('_change_time_send'):] == '_change_time_send':
+        create_new_change_settings_time_dict(call.from_user.id, call.data[len('setting_'):call.data.find('_change_time_send')])
+        # CHANGE_SETTING[call.from_user.id] = {}
+        # CHANGE_SETTING[call.from_user.id]['id_company'] = call.data[len('setting_'):call.data.find('_change_time_send')]
+        time = (datetime.datetime.min + CHANGE_SETTING[call.from_user.id]['time']).time()
+        print(time)
+        bot.send_message(call.from_user.id, 'Выберите время для рассылки',
+                         reply_markup=conf_mark.setting_clock_inline(
+                             hour=datetime.time.strftime(time, '%H'),
+                             minute=datetime.time.strftime(time, '%M')))
+        custom_key = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+        custom_key.add('Готово ✅')
+        msg = bot.send_message(call.from_user.id, 'Нажмите кнопку "Готово"', reply_markup=custom_key)
+        bot.register_next_step_handler(msg, change_answer_time_to_company)
+    elif call.data[len(call.data) - len('_change_time_answer'):] == '_change_time_answer':
+        pass
+    elif call.data[len(call.data) - len('_change_day_send'):] == '_change_day_send':
+        CHANGE_SETTING[call.from_user.id] = {}
+        CHANGE_SETTING[call.from_user.id]['id_project'] = call.data[len('setting_'):call.data.find('_change_day_send')]
+        CHANGE_SETTING[call.from_user.id]['status_weekdays'] = []
+        CHANGE_SETTING[call.from_user.id]['weekdays'] = []
+        custom_key = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+        inline_key = telebot.types.InlineKeyboardMarkup()
+        for day in util.get_weekdays():
+            CHANGE_SETTING[call.from_user.id]['status_weekdays'].append({'id': day['id'],
+                                                                            'day': day['day'],
+                                                                            'status': False})
+            inline_btn = telebot.types.InlineKeyboardButton(text=day['day'],
+                                                        callback_data=inline_conf.change_day_to_send_ + str(day['id']))
+            inline_key.add(inline_btn)
+        bot.send_message(call.from_user.id, 'Выберите дни недели для рассылки', parse_mode='HTML',
+                         reply_markup=inline_key)
+        custom_key.row('Готово ✅')
+        bot.send_message(call.from_user.id, 'После выбора нужных пунктов нажмите на кнопку <b>Готово ✅</b>.',
+                         parse_mode='HTML', reply_markup=custom_key)
+        bot.register_next_step_handler(call.message, change_day_send_to_company)
+
+def change_answer_time_to_company(message):
+    # bot.delete_message(message.from_user.id, message.message_id - 2)
+    bot.delete_message(message.from_user.id, message.message_id - 1)
+    bot.delete_message(message.from_user.id, message.message_id)
+
+    id_project = CHANGE_SETTING[message.from_user.id]['id_company']
+
+    # if CHANGE_SETTING[message.from_user.id]['change_project'] == 'time':
+    util.update_company_time_to_send(CHANGE_SETTING[message.from_user.id]['time'])
+    bot.send_message(message.from_user.id, 'Время отправки было изменено')
     project = util.get_company_by_id(id_project)
 
     text = conf_txt.company_state.format(str(id_project),
-                                          project['name_company'],
-                                          str(project['time_to_send']),
-                                          util.get_days_str_by_project_id(id_project),
-                                          str(project['time_to_answer']))
+                                         project['name_company'],
+                                         str(project['time_to_send']),
+                                         util.get_days_str_by_project_id(id_project),
+                                         str(project['time_to_answer']))
     bot.send_message(message.from_user.id, text, parse_mode='HTML',
                      reply_markup=conf_mark.template_settings(id_project))
-    return
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.change_day_to_send_))
+def action_callback(call):
+    bot.answer_callback_query(call.id)
+    inline_key = telebot.types.InlineKeyboardMarkup()
+    day_id_in_message = int(call.data[len(inline_conf.change_day_to_send_):])
+    for wd_user in CHANGE_SETTING[call.from_user.id]['status_weekdays']:
+        if wd_user['id'] == day_id_in_message:
+            wd_user['status'] = not wd_user['status']
+            if wd_user['status'] is True:
+                print('append')
+                CHANGE_SETTING[call.from_user.id]['weekdays'].append({'id': wd_user['id'], 'day': wd_user['day']})
+                print('RES AFTHER APPEND: ', CHANGE_SETTING[call.from_user.id]['weekdays'])
+            else:
+                print('delete')
+                CHANGE_SETTING[call.from_user.id]['weekdays'].remove({'id': wd_user['id'], 'day': wd_user['day']})
+
+        if wd_user['status']:
+            text_btn = '✅' + wd_user['day']
+        else:
+            text_btn = wd_user['day']
+        inline_btn = telebot.types.InlineKeyboardButton(text=text_btn,
+                                                        callback_data=inline_conf.change_day_to_send_ + str(wd_user['id']))
+        inline_key.add(inline_btn)
+
+    bot.edit_message_reply_markup(chat_id=call.from_user.id, message_id=call.message.message_id,
+                                  reply_markup=inline_key)
+    bot.clear_step_handler(call.message)
+    bot.register_next_step_handler(call.message, change_day_send_to_company)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_text_change))
-def change_text(call):
-    create_new_project_dict(call.from_user.id)
-    text_id = call.data[inline_conf.template_text_change.__len__():]
-    CREATE_COMPANY[call.from_user.id]['text'] = text_id
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    msg = bot.send_message(call.from_user.id, 'Введите новый текст для шаблон #' + text_id )
-    bot.register_next_step_handler(msg, change_text_done)
+def change_day_send_to_company(message):
+    # print('START CHANGE', CHANGE_SETTING[message.from_user.id]['weekdays'])
+    if message.text == 'Готово ✅':
+        if not CHANGE_SETTING[message.from_user.id]['status_weekdays']:
+            bot.send_message(message.from_user.id, 'Выберите хотя бы один день!')
+            bot.register_next_step_handler(message, create_company_choose_time)
+        else:
+            bot.delete_message(message.from_user.id, message.message_id-1)
+            bot.delete_message(message.from_user.id, message.message_id)
+            id_project = CHANGE_SETTING[message.from_user.id]['id_project']
 
+            util.update_company_weekdays(id_project, CHANGE_SETTING[message.from_user.id]['weekdays'])
+            bot.send_message(message.from_user.id, 'Дни рассылки были изменены')
 
-def change_text_done(message):
-    util.update_text_template(CREATE_COMPANY[message.from_user.id]['text'], message.text)
-    text = message.text
-    bot.delete_message(message.from_user.id, message.message_id)
-    bot.send_message(message.from_user.id, '# '+ str(CREATE_COMPANY[message.from_user.id]['text']) +' ' + text,
-                                  reply_markup=conf_mark.get_text_markup(CREATE_COMPANY[message.from_user.id]['text']))
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_text_delete))
-def delete_text(call):
-    create_new_project_dict(call.from_user.id)
-    text_id = call.data[inline_conf.template_text_delete.__len__():]
-    # print('tewtwetwe', text_id)
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    bot.send_message(call.from_user.id, 'Вы действительно хотите удалить шаблон #'+str(text_id),
-                     reply_markup=conf_mark.delete_text_confirm_markup(text_id))
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_text_delete_no))
-def delete_text_cancel(call):
-    text_id = call.data[inline_conf.template_text_delete_no.__len__():]
-    text_data = util.get_template_text_by_id(text_id)
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    bot.send_message(call.from_user.id, '# '+ str(text_data['id']) +' ' + text_data['text'],
-                                  reply_markup=conf_mark.get_text_markup(text_data['id']))
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_text_delete_yes))
-def delete_text_confirm(call):
-    # print(call.data)
-    text_id = call.data[inline_conf.template_text_delete_yes.__len__():]
-    # print(text_id)
-    text_data = util.get_template_text_by_id(text_id)
-    # print(text_data)
-    util.delete_text_template(text_id)
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    bot.send_message(call.from_user.id, 'Шаблон #' + str(text_data[0]['id']) + ' был удален')
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.template_texts_get))
-def tempalate_texts_get(call):
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    id_project = call.data[inline_conf.template_texts_get.__len__():]
-    texts = util.get_template_texts(id_project)
-    # print('text', texts)
-    if texts.__len__() > 0:
-        for text in texts:
-            bot.send_message(call.from_user.id, '#' + str(text['id']) + '  '+text['text'], reply_markup=conf_mark.get_text_markup(text['id']))
+            project = util.get_company_by_id(id_project)
+            text = conf_txt.company_state.format(str(id_project), project['name_company'], str(project['time_to_send']),
+                                                  util.get_days_str_by_project_id(id_project),
+                                                 str(project['time_to_answer']))
+            bot.send_message(message.from_user.id, text, parse_mode='HTML',
+                             reply_markup=conf_mark.template_settings(id_project))
     else:
-        bot.send_message(call.from_user.id, 'У вас нет шаблонов', reply_markup=conf_mark.add_text_markup(id_project))
-
+        custom_key = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+        custom_key.row('Готово ✅')
+        bot.send_message(message.from_user.id, 'Нажмите кнопку "Готово"', reply_markup=custom_key)
+        bot.register_next_step_handler(message, create_company_choose_time)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_liniar_choose_day))
 def choose_day_liniar(call):
@@ -744,9 +841,9 @@ def choose_day_liniar(call):
         reply_markup=telebot_calendar.create_calendar(
             name=calendar_1.prefix,
             year=now.year,
-            month=now.month,  # Specify the NAME of your calendar
-        ),
-    )
+            month=now.month,),)
+            # Specify the NAME of your calendar
+
 # Столбчатый график
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.graph_liniar))
 def graph_liniar_call(call):
@@ -825,10 +922,11 @@ def graph_bar_call(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.change_time))
 def change_time(call):
+    print('type', type(CREATE_COMPANY[call.from_user.id]['time']))
     if call.data == inline_conf.change_time_minus_minute:
-        CREATE_COMPANY[call.from_user.id]['time'] = util.time_minus(CREATE_COMPANY[call.from_user.id]['time'], datetime.timedelta(minutes=5))
+        CREATE_COMPANY[call.from_user.id]['time'] = util.time_plus(CREATE_COMPANY[call.from_user.id]['time'], datetime.timedelta(minutes=5))
     elif call.data == inline_conf.change_time_minus_hour:
-        CREATE_COMPANY[call.from_user.id]['time'] = util.time_minus(CREATE_COMPANY[call.from_user.id]['time'], datetime.timedelta(hours=1))
+        CREATE_COMPANY[call.from_user.id]['time'] = util.time_plus(CREATE_COMPANY[call.from_user.id]['time'], datetime.timedelta(hours=1))
     elif call.data == inline_conf.change_time_plus_minute:
         CREATE_COMPANY[call.from_user.id]['time'] = util.time_plus(CREATE_COMPANY[call.from_user.id]['time'], datetime.timedelta(minutes=5))
     elif call.data == inline_conf.change_time_plus_hour:
@@ -838,6 +936,23 @@ def change_time(call):
                          hour=datetime.time.strftime(CREATE_COMPANY[call.from_user.id]['time'], '%H'),
                          minute=datetime.time.strftime(CREATE_COMPANY[call.from_user.id]['time'], '%M')))
 
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.setting_change_time_))
+def change_time(call):
+    if call.data == inline_conf.setting_change_time_minus_minute:
+        CHANGE_SETTING[call.from_user.id]['time'] = util.time_minus(CHANGE_SETTING[call.from_user.id]['time'], datetime.timedelta(minutes=5))
+    elif call.data == inline_conf.setting_change_time_minus_hour:
+        CHANGE_SETTING[call.from_user.id]['time'] = util.time_minus(CHANGE_SETTING[call.from_user.id]['time'], datetime.timedelta(hours=1))
+    elif call.data == inline_conf.setting_change_time_plus_minute:
+        CHANGE_SETTING[call.from_user.id]['time'] = util.time_plus(CHANGE_SETTING[call.from_user.id]['time'], datetime.timedelta(minutes=5))
+    elif call.data == inline_conf.setting_change_time_plus_hour:
+        CHANGE_SETTING[call.from_user.id]['time'] = util.time_plus(CHANGE_SETTING[call.from_user.id]['time'], datetime.timedelta(hours=1))
+    time = (datetime.datetime.min + CREATE_COMPANY[call.from_user.id]['time']).time()
+    bot.edit_message_reply_markup(call.from_user.id, call.message.message_id,
+                     reply_markup=conf_mark.setting_clock_inline(
+                         hour=datetime.time.strftime(time, '%H'),
+                         minute=datetime.time.strftime(time, '%M')))
 
 
 def create_company_choose_answer_time(message):
@@ -865,35 +980,13 @@ def create_company_choose_answer_time(message):
     bot.send_message(message.from_user.id, 'Выберите время для ответа', reply_markup=conf_mark.time_to_answer_inline())
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.company_change_id))
-def change_id(call):
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    id_project = call.data[inline_conf.company_change_id.__len__():]
-    new_id = util.generate_new_id_for_project(call.from_user.id, id_project)
-    bot.send_message(call.from_user.id, 'ID вашего проекта изменен на {}'.format(new_id))#, reply_markup=inline_key)
-
-    id_project = new_id
-    project = util.get_company_by_id(id_project)
-
-    text = conf_txt.company_state.format(str(id_project),
-                                          project['name_company'],
-                                          str(project['time_to_send']),
-                                          util.get_days_str_by_project_id(id_project),
-                                          str(project['time_to_answer']))
-    bot.send_message(call.from_user.id, text, parse_mode='HTML',
-                     reply_markup=conf_mark.template_settings(id_project))
-
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.create_company_answer_time))
 def create_company_conf(call):
-    # print(util.get_company_by_id(CREATE_COMPANY[call.from_user.id]['project']))
     bot.delete_message(call.from_user.id, call.message.message_id)
     id_project = CREATE_COMPANY[call.from_user.id]['project']
     if CREATE_COMPANY[call.from_user.id]['change_project'] == 'answer_time':
         company = util.get_company_by_id(id_project)
-        # print('time_to_answer')
-        # CREATE_COMPANY[call.from_user.id]['time_to_answer'] = call.data[inline_conf.add_template_answer_time.__len__():]
-        # CREATE_COMPANY[call.from_user.id]['time_to_answer'] = \
         CREATE_COMPANY[call.from_user.id]['time_to_answer'] = (CREATE_COMPANY[call.from_user.id]['project'])['time_to_send'] + datetime.timedelta(hours=int(call.data[inline_conf.create_company_answer_time.__len__():]))
         print('time_to_answer', CREATE_COMPANY)
         util.update_company_time_to_answer(CREATE_COMPANY[call.from_user.id]['time_to_answer'])
@@ -906,7 +999,6 @@ def create_company_conf(call):
         bot.send_message(call.from_user.id, text, parse_mode='HTML',
                          reply_markup=conf_mark.template_settings(id_project))
         return
-    # print(CREATE_COMPANY[call.from_user.id])
     print('Project created')
     CREATE_COMPANY[call.from_user.id]['time_to_answer'] = datetime.timedelta(hours=int(call.data[inline_conf.create_company_answer_time.__len__():]))
     print('time to answer ', CREATE_COMPANY[call.from_user.id]['time_to_answer'])
@@ -937,50 +1029,9 @@ def create_company_conf(call):
 #                          parse_mode='html')
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.company_change_answer_time))
-def company_change_answer_time(call):
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    CREATE_COMPANY[call.from_user.id]['change_project'] = 'answer_time'
-    inline_key = telebot.types.InlineKeyboardMarkup()
-    bot.send_message(call.from_user.id, 'Выберите время для ответа', reply_markup=conf_mark.time_to_answer_inline())
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.company_change_day))
-def company_change_day(call):
-    CREATE_COMPANY[call.from_user.id]['project'] = call.data[inline_conf.company_change_day.__len__():]
-    CREATE_COMPANY[call.from_user.id]['change_project'] = 'days'
-    custom_key = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    inline_key = telebot.types.InlineKeyboardMarkup()
-    for day in util.get_weekdays():
-        CREATE_COMPANY[call.from_user.id]['status_weekdays'].append({'id': day['id'],
-                                                                      'day': day['day'],
-                                                                      'status': False})
-        inline_btn = telebot.types.InlineKeyboardButton(text=day['day'],
-                                                        callback_data=inline_conf.day + str(day['id']))
-        inline_key.add(inline_btn)
-    bot.send_message(call.from_user.id, 'Выберите дни недели для рассылки', parse_mode='HTML',
-                     reply_markup=inline_key)
-    custom_key.row('Готово ✅')
-    msg = bot.send_message(call.from_user.id, 'После выбора нужных пунктов нажмите на кнопку <b>Готово ✅</b>.',
-                     parse_mode='HTML', reply_markup=custom_key)
-    bot.register_next_step_handler(msg, create_company_choose_tim)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(inline_conf.company_change_time))
-def company_change_time(call):
-    print('fsfsfsfsf')
-    bot.delete_message(call.from_user.id, call.message.message_id)
-    create_new_project_dict(call.from_user.id)
-    CREATE_COMPANY[call.from_user.id]['time'] = datetime.time(hour=12, minute=0)
-    CREATE_COMPANY[call.from_user.id]['change_project'] = 'time'
-    CREATE_COMPANY[call.from_user.id]['project'] = call.data[inline_conf.company_change_time.__len__():]
-    bot.send_message(call.from_user.id, 'Выберите время для рассылки',
-                     reply_markup=conf_mark.clock_inline(
-                         hour=datetime.time.strftime(CREATE_COMPANY[call.from_user.id]['time'], '%H'),
-                         minute=datetime.time.strftime(CREATE_COMPANY[call.from_user.id]['time'], '%M')))
-    custom_key = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    custom_key.add('Готово ✅')
-    msg = bot.send_message(call.from_user.id, 'Нажмите кнопку "Готово"', reply_markup=custom_key)
-    bot.register_next_step_handler(msg, create_company_choose_answer_time)
 
 
 class WebhookServer(object):

@@ -51,6 +51,21 @@ def clock_inline(hour, minute):
     inline_key.row(minus_minute, minute, plus_minute)
     return inline_key
 
+# РОМ ЧЕКНИ ЭТУ ХУЙНЮ И ПОМОГИ СДЕЛАТЬ ПОД ДРУГОЙ СЛОВАРЬ
+def setting_clock_inline(hour, minute):
+    inline_key = types.InlineKeyboardMarkup()
+    minus_hour = types.InlineKeyboardButton('-', callback_data=inline_conf.setting_change_time_minus_hour)
+    plus_hour = types.InlineKeyboardButton('+', callback_data=inline_conf.setting_change_time_plus_hour)
+    hour = types.InlineKeyboardButton(hour, callback_data=inline_conf.setting_change_time_minus_hour)
+    _break = types.InlineKeyboardButton(':', callback_data='none')
+    minute = types.InlineKeyboardButton(minute, callback_data=inline_conf.setting_change_time_minus_hour)
+    plus_minute = types.InlineKeyboardButton('+', callback_data=inline_conf.setting_change_time_plus_minute)
+    minus_minute = types.InlineKeyboardButton('-', callback_data=inline_conf.setting_change_time_minus_minute)
+    inline_key.row(minus_hour, hour, plus_hour)
+    inline_key.row(_break)
+    inline_key.row(minus_minute, minute, plus_minute)
+    return inline_key
+
 
 def time_to_answer_inline():
     inline_key = types.InlineKeyboardMarkup()
@@ -86,9 +101,8 @@ def recovery_menu(user_list, to_proj_card=None):
 
 def empl_card(id_user, to_id_proj_card=None, id_project=None):
     inline_kb_full = types.InlineKeyboardMarkup(row_width=2)
-
     # inline_kb_full.add(types.InlineKeyboardButton('Вторая кнопка', callback_data='btn2'))
-    add_recover = types.InlineKeyboardButton('➕ штраф', callback_data=inline_conf.recovery_menu_ +'add_'+ str(id_user) + '.' + str(to_id_proj_card))
+    add_recover = types.InlineKeyboardButton('➕ шИтраф', callback_data=inline_conf.recovery_menu_ + 'add_' + str(id_user) + '.' + str(to_id_proj_card))
     off_recover = types.InlineKeyboardButton('➖ штраф', callback_data=inline_conf.recovery_menu_ + str(id_user))
     see_recover = types.InlineKeyboardButton('🧾 История штрафов',
                                              callback_data=inline_conf.recovery_menu_ + str(id_user))
@@ -103,7 +117,6 @@ def empl_card(id_user, to_id_proj_card=None, id_project=None):
         back_btn = types.InlineKeyboardButton(text='🔙 К списку сотрудников',
                                               callback_data=inline_conf.recovery_menu_ + 'back')
         inline_kb_full.add(back_btn)
-
     return inline_kb_full
 
 
@@ -130,7 +143,7 @@ def templ_from_proj(id_project, all_templ):
     inline_key = types.InlineKeyboardMarkup()
     for templ in all_templ:
         inline_btn = types.InlineKeyboardButton(text=templ['name'],
-                                            callback_data=inline_conf.empl_card_ + str(templ['id']) + '_to_templ_card_')
+                                            callback_data=inline_conf.template_ + str(templ['id']) + '_to_templ_card_')
         inline_key.add(inline_btn)
     add_template = types.InlineKeyboardButton(text='➕ Добавить метрику',
                                           callback_data=inline_conf.template_ + str(id_project) + '_create_new_templ')
@@ -149,11 +162,11 @@ def empl_from_proj(id_project, all_empl):
                                                     user['id']) + '_to_user_card_')
         inline_key.add(inline_btn)
 
-    statistics = types.InlineKeyboardButton('📈 Графики 1 ',
-                                            callback_data=inline_conf.graph_liniar + str(id_project))
-    statistics_two = types.InlineKeyboardButton('📊 Графики 2 ',
-                                            callback_data=inline_conf.graph_bar + str(id_project))
-    inline_key.add(statistics, statistics_two)
+    # statistics = types.InlineKeyboardButton('📈 Графики 1 ',
+    #                                         callback_data=inline_conf.graph_liniar + str(id_project))
+    # statistics_two = types.InlineKeyboardButton('📊 Графики 2 ',
+    #                                         callback_data=inline_conf.graph_bar + str(id_project))
+    # inline_key.add(statistics, statistics_two)
     back_btn = types.InlineKeyboardButton(text='🔙 В карточку компании',
                                           callback_data=inline_conf.project_ + str(id_project) + '_to_card_proj_')
     inline_key.add(back_btn)
@@ -184,13 +197,12 @@ def project_card(id_project, id_admin):
     inline_kb_full.add(template, empl_fine)
 
     project_settings = types.InlineKeyboardButton('⚙ Настройка проекта',
-                                                   callback_data=inline_conf.project_ + str(id_project) + '_setting')
+                                                   callback_data=inline_conf.setting_ + str(id_project) + '_setting_menu')
     inline_kb_full.add(project_settings)
 
     back_btn = types.InlineKeyboardButton(text='🔙 Назад к списку проектов',
                                           callback_data=inline_conf.project_ + 'back')
     inline_kb_full.add(back_btn)
-
     return inline_kb_full
 
 
@@ -227,12 +239,15 @@ def graph_back_markup(id_project, file_data):
     return inline_kb_full
 
 
-def delete_text_confirm_markup(id_text):
+def delete_confirm_markup(id, template=None):
     inline_kb_full = types.InlineKeyboardMarkup(row_width=2)
+    config = ''
+    if template:
+        config = '_template'
     yes_btn = types.InlineKeyboardButton(text='✅ Да',
-                                          callback_data=inline_conf.template_text_delete_yes + str(id_text) )
+                                          callback_data=inline_conf.confirm_markup_ + str(id) + '_yes_' + config)
     no_btn = types.InlineKeyboardButton(text='❌ Нет',
-                                          callback_data=inline_conf.template_text_delete_no + str(id_text) )
+                                          callback_data=inline_conf.confirm_markup_ + str(id) + '_no_' + config)
     inline_kb_full.row(yes_btn, no_btn)
     return inline_kb_full
 
@@ -268,16 +283,17 @@ def template_card(id_template, id_project):
 def template_settings(id_project):
     inline_kb_full = types.InlineKeyboardMarkup(row_width=2)
     change_text = types.InlineKeyboardButton(text='Изменить название проекта',
-                                          callback_data=inline_conf.company_change_name + str(id_project) )
+                                          callback_data=inline_conf.setting_ + str(id_project) + '_change_name_proj')
     change_time = types.InlineKeyboardButton(text='Изменить время отправки',
-                                          callback_data=inline_conf.company_change_time + str(id_project))
+                                          callback_data=inline_conf.setting_ + str(id_project) + '_change_time_send')
     change_answer_time = types.InlineKeyboardButton(text='Изменить время ответа',
-                                          callback_data=inline_conf.company_change_answer_time + str(id_project))
+                                          callback_data=inline_conf.setting_ + str(id_project) + '_change_time_answer')
     change_days = types.InlineKeyboardButton(text='Изменить дни отправки',
-                                          callback_data=inline_conf.company_change_day + str(id_project))
-
+                                          callback_data=inline_conf.setting_ + str(id_project) + '_change_day_send')
+    # change_id = types.InlineKeyboardButton(text='Изменить ID проекта',
+    #                                       callback_data=inline_conf.company_change_id+ str(id_project))
     change_id = types.InlineKeyboardButton(text='Изменить ID проекта',
-                                          callback_data=inline_conf.company_change_id+ str(id_project))
+                                           callback_data=inline_conf.setting_ + str(id_project) + '_change_id_proj')
     del_btn = types.InlineKeyboardButton(text='❌ Удалить проект',
                                           callback_data=inline_conf.project_ + str(id_project) + 'delete')
     back_btn = types.InlineKeyboardButton(text='🔙 Назад',
@@ -298,7 +314,7 @@ def cancel_button():
     return line
 
 
-def confirm_delete(id_company):
+def confirm_delete_project(id_company):
     inline_kb = types.InlineKeyboardMarkup()
     confirm_delete = types.InlineKeyboardButton('✅ Подтверждаю',
                                                 callback_data=inline_conf.project_ + str(id_company) + '_conf_delete')

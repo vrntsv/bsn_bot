@@ -24,7 +24,7 @@ def deploy_database():
     pass
 
 
-# #стандартный коннект
+#стандартный коннект
 # def connect():
 #     # #     """
 #     # #      Подключение к базе данных
@@ -155,10 +155,19 @@ def get_recovery_for_employees(id_user):
 
 def generate_new_id_for_project(id_user, id_project):
     # new_id = id_user + random.randint(100, 9999)
-    count = execute('SELECT COUNT(*) as count FROM company_list WHERE id_admin=%(p)s', id_user)
-    new_id = str(int(id_user+ random.randint(100, 9999))) + str(count)
-    execute('UPDATE company_list SET id=%(p)s WHERE id_admin=%(p)s and id=%(p)s', new_id, id_user, id_project, commit=True)
-    return new_id
+    count = execute('SELECT COUNT(*) as count FROM company_list WHERE id_admin=%(p)s', id_user)[0]['count']
+    new_id = id_user + count + random.randint(100, 999)
+    ok = False
+    while not ok:
+        if not ok:
+            try:
+                execute('UPDATE company_list SET id=%(p)s WHERE id=%(p)s', new_id, id_project, commit=True)
+                ok = True
+            except Exception as e:
+                new_id = new_id + random.randint(100, 999)
+            # execute('UPDATE company_list SET id=%(p)s WHERE id=%(p)s', new_id, id_project, commit=True)
+
+    return execute('SELECT * FROM company_list WHERE id=%(p)s', new_id)[0]
 
 
 def get_employees(id_user):
@@ -410,17 +419,15 @@ def add_new_company(id_user, name_company):
         return False
 
 
-def create_weekdays_for_db():
-    return [0, 0, 0, 0, 0, 0, 0]
-
 def update_company(id_project,
                    time_to_send,
                    time_to_answer,
                     weekdays):
     week_list = create_weekdays_for_db()
+
     for day in weekdays:
         week_list[day['id']-1] = 1
-    print("weekdays", week_list)
+    # print("weekdays", week_list)
 
     execute('UPDATE company_list SET time_to_send=%(p)s, time_to_answer=%(p)s, monday=%(p)s, tuesday=%(p)s, '
             'wednesday=%(p)s, thursday=%(p)s, friday=%(p)s, saturday=%(p)s, sunday=%(p)s WHERE id=%(p)s',
@@ -431,9 +438,12 @@ def update_company(id_project,
 
 def update_company_weekdays(id_project, weekdays):
     week_list = create_weekdays_for_db()
+    # print('##################################')
+    # print('weekdays IN UTIL: ', weekdays)
+    # print('##################################')
     for day in weekdays:
         week_list[day['id']-1] = 1
-    print("weekdays", week_list)
+    # print("weekdays", week_list)
 
     execute('UPDATE company_list SET monday=%(p)s, tuesday=%(p)s, wednesday=%(p)s, thursday=%(p)s, friday=%(p)s, saturday=%(p)s, sunday=%(p)s WHERE id=%(p)s',
             week_list[0], week_list[1], week_list[2], week_list[3], week_list[4],
@@ -474,7 +484,9 @@ def delete_company(id_company):
                        'LEFT JOIN company_list cl ON cl.id=e.id_company '
                        'WHERE id_company=%(p)s', id_company)
     res = ''
-    execute('UPDATE employees SET id_company=%(p)s, fine=0 WHERE id_company=%(p)s',None, id_company, commit=True)
+    execute('UPDATE employees SET id_company=NULL, fine=0 WHERE id_company=%(p)s', id_company, commit=True)
+    execute('DELETE FROM questions_template WHERE id_company=%(p)s', id_company, commit=True)
+    execute('DELETE FROM reports WHERE id_company=%(p)s', id_company, commit=True)
     execute('DELETE FROM company_list WHERE id=%(p)s', id_company, commit=True)
     for user in all_empl:
         res += str(user['id']) + ','
@@ -557,7 +569,12 @@ def get_all_empl_by_admin(id_user):
 
 def update_teplate(id_template, name=None, question=None):
     if name:
-        execute('UPDATE questions_template SET name=%(p)s WHERE id=%(p)', name, id_template, commit=True)
+        execute('UPDATE questions_template SET name=%(p)s WHERE id=%(p)s', name, id_template, commit=True)
     elif question:
-        execute('UPDATE questions_template SET text=%(p)s WHERE id=%(p)', name, id_template, commit=True)
+        execute('UPDATE questions_template SET text=%(p)s WHERE id=%(p)s', question, id_template, commit=True)
     return execute('SELECT * FROM questions_template WHERE id=%(p)s', id_template)[0]
+
+def delete_template(id_template):
+    execute('DELETE FROM reports WHERE id_template=%(p)s', id_template, commit=True)
+    execute('DELETE FROM questions_template WHERE id=%(p)s', id_template, commit=True)
+
